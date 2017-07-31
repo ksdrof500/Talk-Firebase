@@ -1,0 +1,55 @@
+{
+  "project_info": {
+    "project_number": "1069525184659",
+    "firebase_url": "https://talk-firesabe.firebaseio.com",
+    "project_id": "talk-firesabe",
+    "storage_bucket": "talk-firesabe.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1069525184659:android:0ace9b7d169d0de0",
+        "android_client_info": {
+          "package_name": "br.com.talkfirebase"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1069525184659-b5ks61n5miba0o8cna1mhj86cnf8veiq.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "br.com.talkfirebase",
+            "certificate_hash": "a15787fa7b142808d189310993b3c9cabfcfd6b2"
+          }
+        },
+        {
+          "client_id": "1069525184659-ors0idseiu98n3idv1mjbpsa5133gffl.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyABwGMGbBT5hKEL2u7N4Up1zgzUNY-ccm0"
+        }
+      ],
+      "services": {
+        "analytics_service": {
+          "status": 1
+        },
+        "appinvite_service": {
+          "status": 2,
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1069525184659-ors0idseiu98n3idv1mjbpsa5133gffl.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        },
+        "ads_service": {
+          "status": 2
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
