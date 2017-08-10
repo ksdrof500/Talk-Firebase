@@ -15,6 +15,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "1069525184659-2ilrun6ek9e3liblre2mv5iuiqbttuag.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "br.com.talkfirebase",
+            "certificate_hash": "bafe1aa40bde627fd1237834dbf08dcea2e2c01a"
+          }
+        },
+        {
           "client_id": "1069525184659-b5ks61n5miba0o8cna1mhj86cnf8veiq.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {

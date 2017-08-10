@@ -1,6 +1,12 @@
 package br.com.talkfirebase;
 
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
+import android.content.Intent;
+import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
+import android.support.annotation.NonNull;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
 import android.support.v7.app.AlertDialog;
@@ -17,14 +23,23 @@ import android.view.MenuItem;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.TextView;
+import android.widget.Toast;
 
+import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.OnFailureListener;
+import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.android.gms.tasks.Task;
 import com.google.firebase.analytics.FirebaseAnalytics;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.crash.FirebaseCrash;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
+import com.google.firebase.remoteconfig.FirebaseRemoteConfig;
+import com.google.firebase.storage.FirebaseStorage;
+import com.google.firebase.storage.StorageReference;
 import com.squareup.picasso.Picasso;
 
 public class MainActivity extends AppCompatActivity
@@ -35,9 +50,18 @@ public class MainActivity extends AppCompatActivity
     private EditText value1;
     private EditText value2;
     private TextView history;
+    private TextView title;
+    private TextView historyTaxa;
+    private StorageReference mStorageRef;
+
+    private static final String WELCOME_MESSAGE_KEY = "welcome_message";
+    private static final String WELCOME_MESSAGE_CAPS_KEY = "welcome_message_caps";
 
     FirebaseDatabase database;
     DatabaseReference reference;
+    DatabaseReference referenceTaxa;
+    FirebaseRemoteConfig mFirebaseRemoteConfig;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -49,15 +73,22 @@ public class MainActivity extends AppCompatActivity
         fab.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                double total = Double.valueOf(value1.getText().toString()) + Double.valueOf(value2.getText().toString());
-                reference.setValue(total);
-                AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
-                builder.setTitle("Resultado");
-                builder.setMessage(String.valueOf(total));
-                builder.create().show();
+                try {
+                    double total = Double.valueOf(value1.getText().toString()) + Double.valueOf(value2.getText().toString());
+                    reference.setValue(total);
+                    double erro = total + ((total * Double.valueOf(historyTaxa.getText().toString())) / 100);
+                    AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
+                    builder.setTitle("Resultado");
+                    builder.setMessage(String.valueOf(total) + "Valor % Erro : " + erro);
+                    builder.create().show();
 
-                value1.setText(0);
-                value2.setText(0);
+                    value1.setText("0");
+                    value2.setText("0");
+                } catch (Exception ex) {
+                    FirebaseCrash.logcat(Log.ERROR,
+                            MainActivity.this.getLocalClassName(), "NPE caught");
+                    FirebaseCrash.report(ex);
+                }
             }
         });
 
@@ -80,11 +111,16 @@ public class MainActivity extends AppCompatActivity
 
         value1 = (EditText) findViewById(R.id.editText);
         history = (TextView) findViewById(R.id.textView4);
+        title = (TextView) findViewById(R.id.textView6);
+        historyTaxa = (TextView) findViewById(R.id.textView7);
         value2 = (EditText) findViewById(R.id.editText2);
 
         database = FirebaseDatabase.getInstance();
         reference = database.getReference(mAuth.getCurrentUser().getUid());
+        referenceTaxa = database.getReference("taxa");
+        mStorageRef = FirebaseStorage.getInstance().getReference();
 
+        getImage();
 
         reference.addValueEventListener(new ValueEventListener() {
             @Override
@@ -99,6 +135,92 @@ public class MainActivity extends AppCompatActivity
             @Override
             public void onCancelled(DatabaseError error) {
                 // Failed to read value
+            }
+        });
+
+        referenceTaxa.addValueEventListener(new ValueEventListener() {
+            @Override
+            public void onDataChange(DataSnapshot dataSnapshot) {
+                // This method is called once with the initial value and again
+                // whenever data at this location is updated.
+                Double value = dataSnapshot.getValue(Double.class);
+                historyTaxa.setText(String.valueOf(value));
+
+            }
+
+            @Override
+            public void onCancelled(DatabaseError error) {
+                // Failed to read value
+            }
+        });
+
+        mFirebaseRemoteConfig = FirebaseRemoteConfig.getInstance();
+        mFirebaseRemoteConfig.setDefaults(R.xml.remote_config_defaults);
+
+        long cacheExpiration = 300;
+        if (mFirebaseRemoteConfig.getInfo().getConfigSettings().isDeveloperModeEnabled()) {
+            cacheExpiration = 0;
+        }
+
+        mFirebaseRemoteConfig.fetch(cacheExpiration)
+                .addOnCompleteListener(this, new OnCompleteListener<Void>() {
+                    @Override
+                    public void onComplete(@NonNull Task<Void> task) {
+                        if (task.isSuccessful()) {
+                            Toast.makeText(MainActivity.this, "Fetch Succeeded",
+                                    Toast.LENGTH_SHORT).show();
+
+                            // After config data is successfully fetched, it must be activated before newly fetched
+                            // values are returned.
+                            mFirebaseRemoteConfig.activateFetched();
+                        } else {
+                            Toast.makeText(MainActivity.this, "Fetch Failed",
+                                    Toast.LENGTH_SHORT).show();
+                        }
+                        displayWelcomeMessage();
+                    }
+                });
+
+
+        Intent intent = getIntent();
+        String action = intent.getAction();
+        String data = intent.getDataString();
+        if (Intent.ACTION_VIEW.equals(action) && data != null) {
+            AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
+            builder.setTitle("Obrigado");
+            builder.setMessage("Você acabou de usar APP Indexing");
+            builder.create().show();
+        }
+
+
+    }
+
+    private void displayWelcomeMessage() {
+        // [START get_config_values]
+        String welcomeMessage = mFirebaseRemoteConfig.getString(WELCOME_MESSAGE_KEY);
+        // [END get_config_values]
+        if (mFirebaseRemoteConfig.getBoolean(WELCOME_MESSAGE_CAPS_KEY)) {
+            title.setAllCaps(true);
+        } else {
+            title.setAllCaps(false);
+        }
+        title.setText(welcomeMessage);
+    }
+
+
+    private void getImage() {
+        mStorageRef.child("ilegra-original.jpg").
+                getDownloadUrl().addOnSuccessListener(new OnSuccessListener<Uri>() {
+            @Override
+            public void onSuccess(Uri uri) {
+                Picasso.with(MainActivity.this).
+                        load(uri).
+                        into((ImageView) findViewById(R.id.image_sign_in));
+            }
+        }).addOnFailureListener(new OnFailureListener() {
+            @Override
+            public void onFailure(@NonNull Exception exception) {
+                // Handle any errors
             }
         });
     }
